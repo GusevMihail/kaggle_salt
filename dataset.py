@@ -1,12 +1,12 @@
 import os
 import numpy as np
-import imageio
 import matplotlib.pyplot as plt
 import pandas as pd
+import torch
+import imageio
+import cv2
 import albumentations as albu
 from albumentations.torch import ToTensor
-
-import torch
 
 from torch.utils import data
 
@@ -28,18 +28,18 @@ class TGSSaltDataset(data.Dataset):
         file_id = self.file_list[index]
 
         image_folder = os.path.join(self.root_path, "images")
-        image_path = os.path.join(image_folder, file_id + ".png")
-
         mask_folder = os.path.join(self.root_path, "masks")
+        image_path = os.path.join(image_folder, file_id + ".png")
         mask_path = os.path.join(mask_folder, file_id + ".png")
 
-        image = np.array(imageio.imread(image_path), dtype=np.uint8)
-
-        mask = np.array(imageio.imread(mask_path), dtype=np.uint8)
+        image = cv2.imread(image_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        mask = cv2.imread(mask_path, flags=cv2.IMREAD_GRAYSCALE)
 
         if self.transforms is not None:
-            image = self.transforms(image)
-            mask = self.transforms(mask)
+            transformed = transforms(image=image, mask=mask)
+            image = transformed['image']
+            mask = transformed['mask']
 
         return image, mask
 
@@ -55,8 +55,8 @@ class TGSSaltDataset(data.Dataset):
                     image, mask = self[i]
                     i += 1
 
-                ax.imshow(image)
-                ax.imshow(mask, cmap='seismic', alpha=0.2)
+                ax.imshow(np.array(image, dtype=np.uint8))
+                ax.imshow(np.array(mask, dtype=np.uint8), cmap='seismic', alpha=0.2)
                 ax.grid(False)
                 ax.axis('off')
 
@@ -70,15 +70,15 @@ train_path = r'./data/train/'
 def pre_transforms(image_size=224):
     return [albu.Resize(image_size, image_size, p=1)]
 
+
 def compose(transforms_to_compose):
     # combine all augmentations into one single pipeline
     result = albu.Compose([
-      item for sublist in transforms_to_compose for item in sublist
+        item for sublist in transforms_to_compose for item in sublist
     ])
     return result
 
 
 transforms = compose([pre_transforms(image_size=96)])
 
-dataset = TGSSaltDataset(train_path, list(train_df.id.values[:25]))
-
+dataset = TGSSaltDataset(train_path, list(train_df.id.values[:25]), transforms=transforms)
