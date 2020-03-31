@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import torch
+from sklearn.model_selection import train_test_split
 import imageio
 import cv2
 import albumentations as albu
@@ -37,7 +38,7 @@ class TGSSaltDataset(data.Dataset):
         mask = cv2.imread(mask_path, flags=cv2.IMREAD_GRAYSCALE)
 
         if self.transforms is not None:
-            transformed = transforms(image=image, mask=mask)
+            transformed = self.transforms(image=image, mask=mask)
             image = transformed['image']
             mask = transformed['mask']
 
@@ -59,6 +60,25 @@ class TGSSaltDataset(data.Dataset):
                 ax.imshow(np.array(mask, dtype=np.uint8), cmap='seismic', alpha=0.2)
                 ax.grid(False)
                 ax.axis('off')
+    #
+    # def show(self, index: int, images: List[Path], masks: List[Path], transforms=None) -> None:
+    #     image_path = images[index]
+    #     name = image_path.name
+    #
+    #     image = utils.imread(image_path)
+    #     mask = gif_imread(masks[index])
+    #
+    #     if transforms is not None:
+    #         temp = transforms(image=image, mask=mask)
+    #         image = temp["image"]
+    #         mask = temp["mask"]
+    #
+    #     show_examples(name, image, mask)
+
+    # def show_random(self, images: List[Path], masks: List[Path], transforms=None) -> None:
+    #     length = len(images)
+    #     index = random.randint(0, length - 1)
+    #     show(index, images, masks, transforms)
 
 
 train_df = pd.read_csv('./data/train.csv')
@@ -71,6 +91,58 @@ def pre_transforms(image_size=224):
     return [albu.Resize(image_size, image_size, p=1)]
 
 
+def hard_transforms():
+    result = [
+        albu.RandomRotate90(),
+        albu.Cutout(),
+        albu.RandomBrightnessContrast(
+            brightness_limit=0.2, contrast_limit=0.2, p=0.3
+        ),
+        albu.GridDistortion(p=0.3),
+        albu.HueSaturationValue(p=0.3)
+    ]
+
+    return result
+
+
+def resize_transforms(image_size=224):
+    BORDER_CONSTANT = 0
+    pre_size = int(image_size * 1.5)
+
+    random_crop = albu.Compose([
+        albu.SmallestMaxSize(pre_size, p=1),
+        albu.RandomCrop(
+            image_size, image_size, p=1
+        )
+    ])
+
+    rescale = albu.Compose([albu.Resize(image_size, image_size, p=1)])
+
+    random_crop_big = albu.Compose([
+        albu.LongestMaxSize(pre_size, p=1),
+        albu.RandomCrop(
+            image_size, image_size, p=1
+        )
+    ])
+
+    # Converts the image to a square of size image_size x image_size
+    result = [
+        albu.OneOf([
+            random_crop,
+            rescale,
+            random_crop_big
+        ], p=1)
+    ]
+
+    return result
+
+
+def post_transforms():
+    # we use ImageNet image normalization
+    # and convert it to torch.Tensor
+    return [albu.Normalize(), ToTensor()]
+
+
 def compose(transforms_to_compose):
     # combine all augmentations into one single pipeline
     result = albu.Compose([
@@ -79,6 +151,17 @@ def compose(transforms_to_compose):
     return result
 
 
-transforms = compose([pre_transforms(image_size=96)])
+train_transforms = compose([
+    resize_transforms(image_size=96),
+    hard_transforms(),
+    post_transforms()
+])
+valid_transforms = compose([pre_transforms(image_size=96), post_transforms()])
 
-dataset = TGSSaltDataset(train_path, list(train_df.id.values[:25]), transforms=transforms)
+show_transforms = compose([resize_transforms(image_size=96), hard_transforms()])
+
+train_ids, valid_ids = train_test_split(list(train_df.id.values), test_size=0.25, shuffle=True, random_state=42)
+
+train_dataset = TGSSaltDataset(train_path, train_ids, train_transforms)
+valid_dataset = TGSSaltDataset(train_path, valid_ids, valid_transforms)
+show_dataset = TGSSaltDataset(train_path, train_ids, show_transforms)
