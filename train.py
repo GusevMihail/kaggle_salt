@@ -1,7 +1,7 @@
 import tqdm
 import torch
 import numpy as np
-from torch.utils import data
+from torch.utils.data import DataLoader
 from torch.nn import BCELoss
 
 
@@ -23,25 +23,27 @@ model.to(device)
 learning_rate = 1e-4
 loss_fn = BCELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-for e in range(1):
-    train_loss = []
-    for image, mask in tqdm.tqdm(data.DataLoader(train_dataset, batch_size=4, shuffle=True)):
-        image = image.type(torch.float).to(device)
-        y_pred = model(image)
-        loss = loss_fn(y_pred, mask.to(device))
 
-        optimizer.zero_grad()
-        loss.backward()
+def train(epoch=1):
+    for e in range(epoch):
+        train_loss = []
+        for image, mask in tqdm.tqdm(DataLoader(train_dataset, batch_size=4, shuffle=True)):
+            image = image.type(torch.float).to(device)
+            y_pred = model(image)
+            loss = loss_fn(y_pred, mask.to(device))
 
-        optimizer.step()
-        train_loss.append(loss.item())
+            optimizer.zero_grad()
+            loss.backward()
 
-    val_loss = []
-    for image, mask in data.DataLoader(valid_dataset, batch_size=50, shuffle=False):
-        image = image.to(device)
-        y_pred = model(image)
+            optimizer.step()
+            train_loss.append(loss.item())
 
-        loss = loss_fn(y_pred, mask.to(device))
-        val_loss.append(loss.item())
+        val_loss = []
+        for image, mask in DataLoader(valid_dataset, batch_size=50, shuffle=False):
+            image = image.to(device)
+            y_pred = model(image)
 
-    print("Epoch: %d, Train: %.3f, Val: %.3f" % (e, np.mean(train_loss), np.mean(val_loss)))
+            loss = loss_fn(y_pred, mask.to(device))
+            val_loss.append(loss.item())
+
+        print("Epoch: %d, Train: %.3f, Val: %.3f" % (e, np.mean(train_loss), np.mean(val_loss)))

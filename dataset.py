@@ -12,9 +12,19 @@ from albumentations.torch import ToTensor
 from torch.utils import data
 
 
+def show_image_and_mask(image, mask, ax=None, mask_alpha=0.2):
+    if ax is None:
+        ax = plt.axes()
+    ax.imshow(np.array(image, dtype=np.uint8))
+    ax.imshow(np.array(mask, dtype=np.uint8), cmap='seismic', alpha=mask_alpha)
+    ax.grid(False)
+    ax.axis('off')
+
+
 class TGSSaltDataset(data.Dataset):
 
     def __init__(self, root_path, file_list, transforms=None):
+        super().__init__()
         self.root_path = root_path
         self.file_list = file_list
         self.transforms = transforms
@@ -44,6 +54,9 @@ class TGSSaltDataset(data.Dataset):
 
         return image, mask
 
+    def get_id(self, index):
+        return self.file_list[index]
+
     def show_samples(self, n_col, n_row, random=True):
         fig, axs = plt.subplots(n_row, n_col, figsize=(10, 10))
         i = 0
@@ -56,10 +69,11 @@ class TGSSaltDataset(data.Dataset):
                     image, mask = self[i]
                     i += 1
 
-                ax.imshow(np.array(image, dtype=np.uint8))
-                ax.imshow(np.array(mask, dtype=np.uint8), cmap='seismic', alpha=0.2)
-                ax.grid(False)
-                ax.axis('off')
+                show_image_and_mask(image, mask, ax)
+                # ax.imshow(np.array(image, dtype=np.uint8))
+                # ax.imshow(np.array(mask, dtype=np.uint8), cmap='seismic', alpha=0.2)
+                # ax.grid(False)
+                # ax.axis('off')
     #
     # def show(self, index: int, images: List[Path], masks: List[Path], transforms=None) -> None:
     #     image_path = images[index]
@@ -95,13 +109,10 @@ def hard_transforms():
     result = [
         albu.RandomRotate90(),
         albu.Cutout(),
-        albu.RandomBrightnessContrast(
-            brightness_limit=0.2, contrast_limit=0.2, p=0.3
-        ),
+        albu.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.3),
         albu.GridDistortion(p=0.3),
         albu.HueSaturationValue(p=0.3)
     ]
-
     return result
 
 
@@ -150,6 +161,11 @@ def compose(transforms_to_compose):
     ])
     return result
 
+inv_normalize = albu.Normalize(
+   mean=[-0.485/0.229, -0.456/0.224, -0.406/0.225],
+   std=[1/0.229, 1/0.224, 1/0.225]
+)
+
 
 train_transforms = compose([
     resize_transforms(image_size=96),
@@ -157,11 +173,18 @@ train_transforms = compose([
     post_transforms()
 ])
 valid_transforms = compose([pre_transforms(image_size=96), post_transforms()])
-
 show_transforms = compose([resize_transforms(image_size=96), hard_transforms()])
 
 train_ids, valid_ids = train_test_split(list(train_df.id.values), test_size=0.25, shuffle=True, random_state=42)
 
-train_dataset = TGSSaltDataset(train_path, train_ids, train_transforms)
-valid_dataset = TGSSaltDataset(train_path, valid_ids, valid_transforms)
+train_dataset = TGSSaltDataset(train_path, train_ids[:40], train_transforms)
+valid_dataset = TGSSaltDataset(train_path, valid_ids[:40], valid_transforms)
 show_dataset = TGSSaltDataset(train_path, train_ids, show_transforms)
+
+
+def compare_masks(image, gt_mask, predicted_mask):
+    fig, axs = plt.subplots(1, 2, figsize=(15, 15))
+    show_image_and_mask(image, gt_mask, axs[0])
+    axs[0].set_title('ground true mask')
+    show_image_and_mask(image, predicted_mask, axs[1])
+    axs[1].set_title('predicted mask')
