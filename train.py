@@ -4,8 +4,6 @@ import numpy as np
 from torch.utils.data import DataLoader
 from torch.nn import BCELoss
 
-
-
 import models
 from dataset import train_dataset, valid_dataset
 
@@ -24,7 +22,9 @@ learning_rate = 1e-4
 loss_fn = BCELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
+
 def train(epoch=1):
+    model.train(True)
     for e in range(epoch):
         train_loss = []
         for image, mask in tqdm.tqdm(DataLoader(train_dataset, batch_size=4, shuffle=True)):
@@ -47,3 +47,4 @@ def train(epoch=1):
             val_loss.append(loss.item())
 
         print("Epoch: %d, Train: %.3f, Val: %.3f" % (e, np.mean(train_loss), np.mean(val_loss)))
+    model.train(False)
