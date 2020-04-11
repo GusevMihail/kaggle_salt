@@ -108,7 +108,7 @@ def pre_transforms(image_size=224):
 def hard_transforms():
     result = [
         albu.RandomRotate90(),
-        albu.Cutout(),
+        # albu.Cutout(),
         albu.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.3),
         albu.GridDistortion(p=0.3),
         albu.HueSaturationValue(p=0.3)
