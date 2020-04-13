@@ -173,7 +173,7 @@ show_transforms = compose([resize_transforms(image_size=96), hard_transforms()])
 train_ids, valid_ids = train_test_split(list(train_df.id.values), test_size=0.25, shuffle=True, random_state=42)
 
 
-def generate_datesets(length: None):
+def generate_datesets(length=None):
     if length is None:
         train_dataset = TGSSaltDataset(train_path, train_ids, train_transforms)
         valid_dataset = TGSSaltDataset(train_path, valid_ids, valid_transforms)
