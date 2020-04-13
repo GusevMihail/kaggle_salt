@@ -162,7 +162,6 @@ def compose(transforms_to_compose):
     return result
 
 
-
 train_transforms = compose([
     resize_transforms(image_size=96),
     hard_transforms(),
@@ -173,9 +172,19 @@ show_transforms = compose([resize_transforms(image_size=96), hard_transforms()])
 
 train_ids, valid_ids = train_test_split(list(train_df.id.values), test_size=0.25, shuffle=True, random_state=42)
 
-train_dataset = TGSSaltDataset(train_path, train_ids[:40], train_transforms)
-valid_dataset = TGSSaltDataset(train_path, valid_ids[:40], valid_transforms)
-show_dataset = TGSSaltDataset(train_path, train_ids, show_transforms)
+
+def generate_datesets(length: None):
+    if length is None:
+        train_dataset = TGSSaltDataset(train_path, train_ids, train_transforms)
+        valid_dataset = TGSSaltDataset(train_path, valid_ids, valid_transforms)
+        show_dataset = TGSSaltDataset(train_path, train_ids, show_transforms)
+    else:
+        train_dataset = TGSSaltDataset(train_path, train_ids[:length], train_transforms)
+        valid_dataset = TGSSaltDataset(train_path, valid_ids[:length], valid_transforms)
+        show_dataset = TGSSaltDataset(train_path, train_ids, show_transforms)
+
+
+generate_datesets()
 
 
 def compare_masks(image, gt_mask, predicted_mask):
