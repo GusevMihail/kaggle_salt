@@ -183,8 +183,10 @@ def generate_datesets(length=None):
         valid_dataset = TGSSaltDataset(train_path, valid_ids[:length], valid_transforms)
         show_dataset = TGSSaltDataset(train_path, train_ids, show_transforms)
 
+    return train_dataset, valid_dataset, show_dataset
 
-generate_datesets()
+
+train_dataset, valid_dataset, show_dataset = generate_datesets()
 
 
 def compare_masks(image, gt_mask, predicted_mask):
