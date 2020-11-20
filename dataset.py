@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 import imageio
 import cv2
 import albumentations as albu
-from albumentations.torch import ToTensor
+from albumentations.pytorch import ToTensor
 
 from torch.utils import data
 
